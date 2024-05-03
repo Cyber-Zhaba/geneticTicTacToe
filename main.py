@@ -63,7 +63,7 @@ class GeneticAlgorithm:
 
     def evolve(self, generations):
         for gen in range(generations):
-            progres = f"|{"-" * (10 * gen // generations):<10}| {gen}/{generations}"
+            progres = f"|{"-" * (20 * gen // generations):<20}| {gen}/{generations}"
             print(progres, end="")
             self.population = self.next_generation()
             print("\b" * len(progres), end="")
@@ -76,13 +76,18 @@ class GeneticAlgorithm:
         children[:self.elitism_size] = elites
         return children
 
+    @staticmethod
+    def crossover(parent1, parent2):
+        child = Player()
+        for i in range(9):
+            child.genes[i] = parent1.genes[i] if random.random() < 0.5 else parent2.genes[i]
+        return child
+
     def breed(self, winners):
         children = []
         for _ in range(len(self.population)):
             parent1, parent2 = random.sample(winners, 2)
-            child = Player()
-            for i in range(9):
-                child.genes[i] = parent1.genes[i] if random.random() < 0.5 else parent2.genes[i]
+            child = self.crossover(parent1, parent2)
             children.append(child)
         return children
 
@@ -90,8 +95,6 @@ class GeneticAlgorithm:
         for child in children:
             if random.random() < self.mutation_rate:
                 child.genes[random.randint(0, 8)] = random.random()
-
-    # ... existing code ...
 
     def tournament_selection(self):
         winners = []
@@ -128,5 +131,5 @@ class GeneticAlgorithm:
 
 
 ga = GeneticAlgorithm(100)
-ga.evolve(100)
+ga.evolve(1000)
 ga.play_against_human()
