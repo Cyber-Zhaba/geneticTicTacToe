@@ -33,7 +33,7 @@ class Game:
 
     def print_board(self):
         symbols = ['.', 'X', 'O']
-        print('\n' + '\n'.join([' '.join([symbols[self.board[i * 3 + j]] for j in range(3)]) for i in range(3)]) + '\n')
+        print('\n' + '\n'.join([' '.join([symbols[self.board[i * 3 + j]] for j in range(3)]) for i in range(3)]))
 
     def check_win(self):
         win_conditions = [(0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6), (1, 4, 7), (2, 5, 8), (0, 4, 8), (2, 4, 6)]
@@ -47,7 +47,7 @@ class HumanPlayer:
     @staticmethod
     def move(board):
         valid_moves = [i for i in range(9) if board[i] == 0]
-        while True:
+        while valid_moves:
             move = int(input("Enter your move (0-8): "))
             if move in valid_moves:
                 return move
@@ -70,10 +70,8 @@ class GeneticAlgorithm:
 
     def next_generation(self):
         winners = self.tournament_selection()
-        elites = sorted(winners, key=self.evaluate, reverse=True)[:self.elitism_size]
         children = self.breed(winners)
         self.mutate(children)
-        children[:self.elitism_size] = elites
         return children
 
     @staticmethod
@@ -97,39 +95,49 @@ class GeneticAlgorithm:
                 child.genes[random.randint(0, 8)] = random.random()
 
     def tournament_selection(self):
+        players = self.population
         winners = []
-        for _ in range(len(self.population) // 2):
-            player1, player2 = random.sample(self.population, 2)
-            game = Game(player1, player2)
-            winner = game.play()
-            if winner is not None:
-                winners.append(self.population[winner])
+        while len(players) > 10:
+            winners = []
+            for i in range(len(players) - 1):
+                player1, player2 = players[i:i+2]
+                game = Game(player1, player2)
+                winner = game.play()
+                if winner is not None:
+                    winners.append([player1, player2][winner])
+            if len(winners) > 1:
+                players = winners
         return winners
 
-    def play_against_human(self):
+    def play_against_human(self, player_choice):
         human = HumanPlayer()
         best_ai = self.get_best_ai()
-        game = Game(human, best_ai)
-        winner = game.play()
-        if winner == 0:
-            print("Congratulations! You won against the AI.")
+        if player_choice == "X":
+            game = Game(human, best_ai)
         else:
+            game = Game(best_ai, human)
+        winner = game.play()
+        if (winner == 0 and player_choice == "X") or (winner == 1 and player_choice != "X"):
+            print("Congratulations! You won against the AI.")
+        elif winner:
             print("The AI won. Better luck next time.")
+        else:
+            print("Nobody won")
 
     def get_best_ai(self):
-        best_ai = max(self.population, key=self.evaluate)
+        best_ai = self.population[0]
+        for i in range(1, len(self.population)):
+            player2 = self.population[i]
+            game = Game(best_ai, player2)
+            winner = game.play()
+            if winner is None:
+                winner = 0
+            best_ai = [best_ai, player2][winner]
         return best_ai
 
-    @staticmethod
-    def evaluate(player):
-        wins = 0
-        for _ in range(100):  # play 100 games to evaluate
-            game = Game(player, Player())
-            if game.play() == 0:
-                wins += 1
-        return wins
 
-
-ga = GeneticAlgorithm(100)
-ga.evolve(1000)
-ga.play_against_human()
+ga = GeneticAlgorithm(400)
+ga.evolve(500)
+while input("Play with ai? [y]/[n]\n") == "y":
+    choice = input("X or O?\n")
+    ga.play_against_human(choice)
