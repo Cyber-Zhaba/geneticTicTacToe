@@ -7,7 +7,9 @@ class Player:
 
     def move(self, board):
         valid_moves = [i for i in range(9) if board[i] == 0]
-        return max(valid_moves, key=lambda i: self.genes[i])
+        if valid_moves:
+            return max(valid_moves, key=lambda i: self.genes[i])
+        return None
 
 
 class Game:
@@ -19,6 +21,8 @@ class Game:
     def play(self):
         while True:
             move = self.players[self.current_player].move(self.board)
+            if move is None:
+                return None
             self.board[move] = self.current_player + 1
             if (isinstance(self.players[self.current_player], HumanPlayer) or isinstance(
                     self.players[1 - self.current_player], HumanPlayer)):
@@ -52,26 +56,25 @@ class HumanPlayer:
 
 
 class GeneticAlgorithm:
-    def __init__(self, population_size):
+    def __init__(self, population_size, mutation_rate=0.01, elitism_size=2):
         self.population = [Player() for _ in range(population_size)]
+        self.mutation_rate = mutation_rate
+        self.elitism_size = elitism_size
 
     def evolve(self, generations):
-        for _ in range(generations):
+        for gen in range(generations):
+            progres = f"|{"-" * (10 * gen // generations):<10}| {gen}/{generations}"
+            print(progres, end="")
             self.population = self.next_generation()
+            print("\b" * len(progres), end="")
 
     def next_generation(self):
         winners = self.tournament_selection()
+        elites = sorted(winners, key=self.evaluate, reverse=True)[:self.elitism_size]
         children = self.breed(winners)
+        self.mutate(children)
+        children[:self.elitism_size] = elites
         return children
-
-    def tournament_selection(self):
-        winners = []
-        for _ in range(len(self.population) // 2):
-            player1, player2 = random.sample(self.population, 2)
-            game = Game(player1, player2)
-            winner = game.play()
-            winners.append(self.population[winner])
-        return winners
 
     def breed(self, winners):
         children = []
@@ -82,6 +85,23 @@ class GeneticAlgorithm:
                 child.genes[i] = parent1.genes[i] if random.random() < 0.5 else parent2.genes[i]
             children.append(child)
         return children
+
+    def mutate(self, children):
+        for child in children:
+            if random.random() < self.mutation_rate:
+                child.genes[random.randint(0, 8)] = random.random()
+
+    # ... existing code ...
+
+    def tournament_selection(self):
+        winners = []
+        for _ in range(len(self.population) // 2):
+            player1, player2 = random.sample(self.population, 2)
+            game = Game(player1, player2)
+            winner = game.play()
+            if winner is not None:
+                winners.append(self.population[winner])
+        return winners
 
     def play_against_human(self):
         human = HumanPlayer()
@@ -108,5 +128,5 @@ class GeneticAlgorithm:
 
 
 ga = GeneticAlgorithm(100)
-ga.evolve(1000)
+ga.evolve(100)
 ga.play_against_human()
